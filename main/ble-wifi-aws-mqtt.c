@@ -288,9 +288,13 @@ static void publish_sensor_data(ble_adv_data_t * advdata)
     const int TOPIC_LEN = strlen(TOPIC);
 	IoT_Publish_Message_Params paramsQOS0;
 
-//	if(!is_client_ready) return;
+	if(!is_client_ready) return;
 
-	sprintf(cPayload, "{\n\"temperature\":%d,\n\"humidity\":%d,\n\"pressure\":%d,\n\"visible_lux\":%d,\n\"ir_lux\":%d\n}",
+	sprintf(cPayload, "{\n\"temperature\":%d,"
+			"\n\"humidity\":%d,"
+			"\n\"pressure\":%d,"
+			"\n\"visible_lux\":%d,"
+			"\n\"ir_lux\":%d\n}",
     		advdata->temperature,
 			advdata->humidity,
 			advdata->pressure,
@@ -305,23 +309,24 @@ static void publish_sensor_data(ble_adv_data_t * advdata)
     ESP_LOGI(MQTT_TAG, "Publishing to AWS:\n");
     printf(cPayload);
     printf("\n--------------------------\n");
-
-//    aws_iot_mqtt_publish(&client, TOPIC, TOPIC_LEN, &paramsQOS0);
+    aws_iot_mqtt_publish(&client, TOPIC, TOPIC_LEN, &paramsQOS0);
 }
 
-ble_adv_data_t scan_parse_sensor_data(esp_ble_gap_cb_param_t *scan_rst)
+ble_adv_data_t decode_sensor_data(esp_ble_gap_cb_param_t *scan_rst)
 {
 	ble_adv_data_t adv_data;
-	memcpy(&adv_data, scan_rst->scan_rst.ble_adv + 7, sizeof(ble_adv_data_t));
-
-//	ESP_LOGI(BLE_TAG,"Pressao = %d | Temp = %d | hum = %d | vis = %d | infrared = %d", adv_data.pressure, adv_data.temperature, adv_data.humidity, adv_data.visible_lux, adv_data.infrared_lux);
+	memcpy(&adv_data,
+		   scan_rst->scan_rst.ble_adv + 7,
+		   sizeof(ble_adv_data_t));
 	return adv_data;
 }
 
 bool msd_nordic_filter(esp_ble_gap_cb_param_t *scan_rst)
 {
 	static uint8_t ref_data[3] = {0xFF, 0x59, 0x00};
-	int32_t result = memcmp(&ref_data[0], scan_rst->scan_rst.ble_adv + 4, 3);
+	int32_t result = memcmp(&ref_data[0],
+			                scan_rst->scan_rst.ble_adv + 4,
+							3);
 	if(result != 0)
 	{
 		return false;
@@ -343,10 +348,9 @@ bool scan_rssi_filter(esp_ble_gap_cb_param_t *scan_rst)
 	return false;
 }
 
-static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
-{
-	switch(event)
-	{
+static void esp_gap_cb(esp_gap_ble_cb_event_t event,
+		               esp_ble_gap_cb_param_t *param){
+	switch(event)	{
 	case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
 		esp_ble_gap_start_scanning(0);
 		break;
@@ -355,10 +359,9 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 		switch(param->scan_rst.search_evt)
 		{
 		case ESP_GAP_SEARCH_INQ_RES_EVT:
-			if(scan_rssi_filter(param) && msd_nordic_filter(param))
-			{
+			if(msd_nordic_filter(param)){
 				ble_adv_data_t adv_data;
-				adv_data = scan_parse_sensor_data(param);
+				adv_data = decode_sensor_data(param);
 				publish_sensor_data(&adv_data);
 			}
 			break;
@@ -366,9 +369,7 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 		default:
 			break;
 		}
-
 		break;
-
 	default:
 		break;
 	}
